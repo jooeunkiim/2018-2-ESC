@@ -1,0 +1,69 @@
+---
+title: "week8"
+author: "김주은"
+date: "2018년 11월 14일"
+output: html_document
+---
+
+```{r, include=FALSE}
+setwd('C:/Users/Jooeun Kim/Desktop/ESC/8주차 과제')
+data <- read.csv('survey_dt.csv')
+```
+
+```{r}
+str(data)
+```
+성별, 연령, 직업, 학력, 유형을 제외한다. x, y변수를 지정해준다.
+```{r}
+data <- data[,-c(1:5)]
+y <- data[,c(25:29)]
+x <- data[,c(1:24)]
+```
+  이제 변수간의 상관관계를 확인해본다
+```{r}
+library(corrplot)
+corrplot(cor(data),method='number')
+```
+
+  screeplot을 그려본다
+```{r}
+PCA.result <- prcomp(x)
+plot(PCA.result$sdev, type='o')
+```
+
+  그래프를 보면 3개정도로 하는게 적당할 것 같다
+  
+  factor analysis를 수행한다
+```{r}
+fit <- factanal(x, factors=3, rotation='varimax')
+print(fit,  sort=T)
+loading <- fit$loadings[,1:2]
+plot(loading, type='n', xlim=c(-1,1), ylim=c(-1,1))
+text(loading, labels=names(x), cex=1)
+abline(0,0)
+abline(v=0)
+
+loading <- fit$loadings[,2:3]
+plot(loading, type='n', xlim=c(-1,1), ylim=c(-1,1))
+text(loading, labels=names(x), cex=1)
+abline(0,0)
+abline(v=0)
+
+loading <- fit$loadings[,c(1,3)]
+plot(loading, type='n', xlim=c(-1,1), ylim=c(-1,1))
+text(loading, labels=names(x), cex=1)
+abline(0,0)
+abline(v=0)
+```
+  factor을 3개로 정했기 때문에 3가지 중 2가지씩을 골라 그래프를 그려봤다.
+  먼저 factor1은 사회적실재감과 기업이미지에 많은 영향을 받는 것으로 보인다 
+  factor2는 만족도와 관계를 갖는다.
+  factor3는 품질, 신뢰도의 영향을 받으며 뱅킹갯수와 약간의 negative 관계를 갖는다!
+  
+  변인1: 웹사이트나 금융기관이 고객에게 주는 긍정적 이미지
+  
+  변인2: 만족도
+  
+  변인3: 웹사이트의 사용이나 제공정보 측면의 유용성
+  
+  이 세가지로 고객의 충성도에 영향을 주는 변인을 크게 나눌 수 있을 것 같다

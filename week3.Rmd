@@ -1,0 +1,105 @@
+---
+title: "week3 assignment"
+author: "김주은"
+date: "2018년 9월 30일"
+output: html_document
+---
+우선 디렉토리를 설정하고 데이터셋을 불러온다.
+```{r}
+setwd('C:/Users/Jooeun Kim/Desktop/ESC/Week3 Assignment')
+read.csv(file = 'nba.csv', header=T) -> nba
+str(nba)
+```
+이를 통해 nba 데이터셋은 55개 변수와 100개의 관측치를 가짐을 알 수 있다.
+  
+```{r}
+lm(SALARY_MILLIONS~., data=nba)
+```
+nba 데이터셋에서는 변수들간의 상관계수가 매우 높아 `lm()` 함수로는 유의하지 않은 결과물을 얻었다. 그렇기 때문에 다른 변수들을 제거해야한다.  
+  
+  
+먼저 nba 데이터셋의 변수들 간의 다중공산성에 대해 알아본다.
+```{r}
+cor(nba)
+```
+1 또는 -1에 근접한 값들이 꽤 있는 것을 알 수 있따.
+  
+  1. Best Subset Method를 쓰기 위해 `leaps` 패키지를 설치한다.
+```{r}
+if(!require(leaps)){install.packages('leaps')}
+library(leaps)
+```
+`leaps` 패키지의 내장함수인 `regsubsets()` 함수를 사용하면 변수들로 만들 수 있는 모형의 모든 경우를 고려하여, 이 모든 경우의 adjusted R-squared, AIC, BIC 중 한 기준을 이용하여 변수를 고를 수 있다. 하지만 nba 데이터셋의 경우는 변수가 55개인 관계로 렉이 걸린다....  
+  
+  
+2. Forward stepwise selection은 `regsubsets(method='forward')` 함수를 이용해서 시행한다.
+```{r}
+regsubsets(SALARY_MILLIONS~., data=nba, method='forward', nvmax=54) -> regfit.fwd
+summary(regfit.fwd) -> fwd
+names(fwd)
+```
+구해진 모델 가운데 최적의 변수들을 찾기 위해 adjusted $R^2$, AIC, BIC를 비교한다.  
+```{r}
+which.max(fwd$adjr2) -> a
+which.min(fwd$cp) -> b
+which.min(fwd$bic) -> c
+```
+최적의 조건을 가진 모형을 각각 a, b, c번째 모델이라고 설정하면
+```{r}
+coef(regfit.fwd, a)
+```
+딱히 유의한 결과를 얻을 수 없다.
+```{r}
+coef(regfit.fwd, b)
+coef(regfit.fwd, c)
+```
+하지만 adjr2f를 이용한 결과와 달리 AIC, BIC를 이용한 모형은 소수의 유의한 변수만을 남김을 알 수 있다. BIC모형은 너무 많은 변수를 삭제했으므로 가장 바람직해보이는 AIC를 이용한 모형을 통해 회귀분석을 해본다.
+```{r}
+names(coef(regfit.fwd, b)) -> fwdcoef
+lm(SALARY_MILLIONS~., data=nba[c(fwdcoef[-1], 'SALARY_MILLIONS')]) -> lm1
+summary(lm1)
+```
+
+  
+  
+3. Backward stepwise selection은 `regsubsets(method='backward')` 함수를 이용해서 시행한다. 관측치의 개수가 변수의 개수보다 많으므로 적용 가능!
+```{r}
+regsubsets(SALARY_MILLIONS~., data=nba, method='backward', nvmax=54) -> regfit.bwd
+summary(regfit.bwd) -> bwd
+names(bwd)
+```
+구해진 모델 가운데 최적의 변수들을 찾기 위해 adjusted $R^2$, AIC, BIC를 비교한다.  
+```{r}
+which.max(bwd$adjr2) -> d
+which.min(bwd$cp) -> e
+which.min(bwd$bic) -> f
+```
+최적의 조건을 가진 모형을 각각 d, e, f번째 모델이라고 설정하면
+```{r}
+coef(regfit.bwd, d)
+```
+여기서 또한 유의한 결과를 얻지 못했다.
+```{r}
+coef(regfit.bwd, e)
+coef(regfit.bwd, f)
+```
+forward stepwise로 했던 결과와 유사해보이지만 조금씩 다르다. 하지만  adjusted $R^2$, AIC, BIC 순으로 많은 수의 변수를 남긴다는 별로 의미없는 사실을 알 수 있다. 이 중 역시 바람직해보이는 AIC를 기준으로 도출한 결과이다. 이를 통해 또 다시 회귀분석을 한다.
+```{r}
+names(coef(regfit.bwd, e)) -> bwdcoef
+lm(SALARY_MILLIONS~., data=nba[c(bwdcoef[-1], 'SALARY_MILLIONS')]) -> lm2
+summary(lm2)
+```
+  
+  
+  
+  4. Stepwise selection method
+```{r}
+step(lm(SALARY_MILLIONS~., data=nba))
+```
+`step()`함수를 이용해서 lm(formula = SALARY_MILLIONS ~ AGE + W_PCT + AST_PCT + AST_TO + 
+    TM_TOV_PCT + TS_PCT + USG_PCT + PACE + PIE + FGM_PG + FGA_PG + 
+    FG_PCT + MIN_RANK + OFF_RATING_RANK + DEF_RATING_RANK + NET_RATING_RANK + 
+    AST_TO_RANK + TM_TOV_PCT_RANK + EFG_PCT_RANK + FGM_RANK + 
+    FGA_RANK + FGM_PG_RANK + FGA_PG_RANK + PTS + TWITTER_FOLLOWER_COUNT_MILLIONS, 
+    data = nba)의 조합을 얻을 수 있다. 하지만 nba 데이터셋과 같이 변수들 간의 다중공산성이 높은 자료는 step함수를 이용하기에 적합하지 않다고 한다... 마지막에 나온 이 조합으로 만든 회귀모형의 회귀계수들이 0에 가까운 의미 없는 값들을 갖는 것을 통해서도 알 수 있다. 그러므로 이 뒤는 생략하겠다.
+ 
